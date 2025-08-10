@@ -1,0 +1,47 @@
+📁 1. Crée un dossier pour mon projet (si ce n’est pas déjà fait) :
+mkdir laurencia
+cd laurencia
+
+🌱 2. Crée un environnement virtuel :
+python -m venv venv
+
+venv\Scripts\activate (Activation)
+
+
+INSTALL REACT NATIVE CLI
+npx @react-native-community/cli init
+
+NAVIGATION
+npm install @react-navigation/native
+npm install @react-navigation/stack
+npm install react-native-screens react-native-safe-area-context
+
+ICON
+npm install react-native-vector-icons
+
+npm install \
+@react-native-async-storage/async-storage \
+@react-native-masked-view/masked-view \
+@react-native-picker/picker \
+@react-navigation/drawer \
+axios \
+formik \
+react-hook-form \
+react-native-chart-kit \
+react-native-file-picker \
+react-native-gesture-handler \
+react-native-image-picker \
+react-native-pager-view \
+react-native-paper \
+react-native-pdf \
+react-native-permissions \
+react-native-print \
+react-native-reanimated \
+react-native-responsive-screen \
+react-native-size-matters \
+react-native-svg \
+react-navigation \
+yup
+npm install @react-native-async-storage/async-storage @react-native-masked-view/masked-view @react-native-picker/picker @react-navigation/drawer axios formik react-hook-form react-native-chart-kit react-native-file-picker react-native-gesture-handler react-native-image-picker react-native-pager-view react-native-paper react-native-pdf react-native-permissions react-native-print react-native-reanimated react-native-responsive-screen react-native-size-matters react-native-svg react-navigation yup --legacy-peer-deps
+npm install --save-dev @types/react-native-vector-icons --legacy-peer-deps
+
