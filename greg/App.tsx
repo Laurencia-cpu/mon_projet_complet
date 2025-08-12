@@ -19,7 +19,7 @@ import Gererpara from './src/screens/Gererpara';
 import fournisseur from './src/screens/fournisseur';
 import Reception from './src/screens/Reception';
 import Edition from './src/screens/Edition';
-import Statistique from './src/screens/Statistique';
+
 import PageAchat from './src/screens/PageAchat';
 import Pesée from './src/screens/Pesée';
 import Facture from './src/screens/Facture';
@@ -70,7 +70,7 @@ export type RootStackParamList = {
    fournisseur:undefined;
    Reception:undefined;
    Edition:undefined;
-   Statistique:undefined;
+
    PageAchat:undefined;
    Pesée:undefined;
    Facture:undefined;
@@ -125,7 +125,6 @@ const App: React.FC = () => {
         <Stack.Screen name="Pdp" component={Pdp} />
         <Stack.Screen name="fournisseur" component={fournisseur}/>
         <Stack.Screen name="Edition" component={Edition}/>
-        <Stack.Screen name="Statistique" component={Statistique}/>
         <Stack.Screen name="PageAchat" component={PageAchat}/>
         <Stack.Screen name="Pesée" component={Pesée}/>
         <Stack.Screen name="Facture" component={Facture}/>
