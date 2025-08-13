@@ -1,27 +1,20 @@
-import React, { useEffect, useState } from 'react';
+// src/screens/Application.tsx
+
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-  useColorScheme,
-  ScrollView,
-  Alert,
+  View, Text, StyleSheet, Image, ActivityIndicator,
+  Dimensions, useColorScheme, ScrollView, Alert, RefreshControl, SafeAreaView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Pdp from './Pdp'; // Composant pour photo de profil
 
-type ListeNavigationPrincipale = {
+import Pdp from './Pdp';
+import CategoryCard from './CategoryCard';
+
+// --- Famaritana ireo karazana (Types) ---
+export type ListeNavigationPrincipale = {
   EspaceClient: undefined;
-  EcranConfiguration: undefined;
-  EcranExploitation: undefined;
-  EcranEdition: undefined;
-  SupplierDashord: undefined;
   TypeMetaux: undefined;
   LieuCollecte: undefined;
   GrilleTarifaire: undefined;
@@ -29,110 +22,125 @@ type ListeNavigationPrincipale = {
   Tournee: undefined;
   Stock: undefined;
   CorrigerCollecte: undefined;
-  FusionLotsScreen: undefined;
+  FusionLots: undefined;
   HistoriqueCorrection: undefined;
   StatQuantite: undefined;
   Depense: undefined;
   Performance: undefined;
-  FusionLots: undefined;
 };
 
 type TypeNavigation = StackNavigationProp<ListeNavigationPrincipale>;
+type NavigationTarget = keyof ListeNavigationPrincipale;
 
-const { width } = Dimensions.get('window');
+interface Entreprise {
+  nom: string;
+  email: string;
+  adresse: string;
+  siret: string;
+  tva: string;
+  telephone: string;
+  logo: string;
+}
+
+const API_BASE_URL = 'http://10.0.2.2:8000/api'; 
 
 const CATEGORIES = [
   {
     title: 'CONFIGURATION',
-    items: ['Créer types de métaux', 'Définir lieux de collecte', 'Grille tarifaire'],
+    items: [
+      { label: 'Créer types de métaux', target: 'TypeMetaux' as const },
+      { label: 'Définir lieux de collecte', target: 'LieuCollecte' as const },
+      { label: 'Grille tarifaire', target: 'GrilleTarifaire' as const },
+    ],
   },
   {
     title: 'EXPLOITATION',
-    items: ['Enregistrer collectes', 'Suivi des tournées', 'Gérer les stocks'],
+    items: [
+      { label: 'Enregistrer collectes', target: 'CollecteEnregistre' as const },
+      { label: 'Suivi des tournées', target: 'Tournee' as const },
+      { label: 'Gérer les stocks', target: 'Stock' as const },
+    ],
   },
   {
     title: 'EDITION',
-    items: ['Corriger collectes', 'Fusionner des lots', 'Historique des corrections '],
+    items: [
+      { label: 'Corriger collectes', target: 'CorrigerCollecte' as const },
+      { label: 'Fusionner des lots', target: 'FusionLots' as const },
+      { label: 'Historique des corrections', target: 'HistoriqueCorrection' as const },
+    ],
   },
   {
     title: 'STATISTIQUES',
-    items: ['Quantité récupérée', 'Depense', 'Analyse des performances'],
+    items: [
+      { label: 'Quantité récupérée', target: 'StatQuantite' as const },
+      { label: 'Dépenses', target: 'Depense' as const },
+      { label: 'Analyse des performances', target: 'Performance' as const },
+    ],
   },
 ];
 
+const { width } = Dimensions.get('window');
+
 const Application = () => {
   const navigation = useNavigation<TypeNavigation>();
-  const [chargement, setChargement] = useState(true);
-  const [entreprise, setEntreprise] = useState({
-    nom: '',
-    email: '',
-    adresse: '',
-    siret: '',
-    tva: '',
-    telephone: '',
-    logo: '',
-  });
-
   const isDarkMode = useColorScheme() === 'dark';
 
-  useEffect(() => {
-    const verifierToken = async () => {
-      const token = await AsyncStorage.getItem('access');
-      if (!token) {
-        navigation.navigate('EspaceClient');
-        return;
-      }
+  const [chargement, setChargement] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [entreprise, setEntreprise] = useState<Entreprise | null>(null);
 
-      try {
-        const res = await fetch('http://10.0.2.2:8000/api/me/', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          const errorDetails = await res.text();
-          console.error('Erreur brut:', errorDetails);
-          throw new Error('Erreur lors de la récupération des données.');
-        }
-
-        const data = await res.json();
-        console.log('Entreprise connectée :', data);
-        setEntreprise(data.entreprise);
-      } catch (error) {
-        console.error("Erreur lors du chargement de l'entreprise :", error);
-        Alert.alert('Erreur', 'Session expirée. Veuillez vous reconnecter.');
-        await AsyncStorage.multiRemove(['access', 'refresh']);
-        navigation.navigate('EspaceClient');
-      } finally {
-        setChargement(false);
-      }
-    };
-
-    verifierToken();
+  const fetchEnterpriseData = useCallback(async () => {
+    // ... (ny atiny tsy miova)
+    const token = await AsyncStorage.getItem('access');
+    if (!token) {
+      navigation.navigate('EspaceClient');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/me/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Session expirée ou invalide.');
+      const data = await res.json();
+      setEntreprise(data.entreprise);
+    } catch (error) {
+      console.error("Erreur lors du chargement de l'entreprise :", error);
+      Alert.alert('Erreur de session', 'Veuillez vous reconnecter.', [
+        { text: 'OK', onPress: async () => {
+            await AsyncStorage.multiRemove(['access', 'refresh']);
+            navigation.navigate('EspaceClient');
+        }},
+      ]);
+    }
   }, [navigation]);
+  
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchEnterpriseData();
+    setIsRefreshing(false);
+  }, [fetchEnterpriseData]);
 
   useEffect(() => {
+    setChargement(true);
+    fetchEnterpriseData().finally(() => setChargement(false));
+  }, [fetchEnterpriseData]);
+
+  useEffect(() => {
+    // ... (ny atin'ny useEffect an'ny refresh token dia tsy miova)
     const refreshAccessToken = async () => {
       const currentRefreshToken = await AsyncStorage.getItem('refresh');
       if (!currentRefreshToken) return;
-
       try {
-        const response = await fetch('http://10.0.2.2:8000/api/refresh/', {
+        const response = await fetch(`${API_BASE_URL}/refresh/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh: currentRefreshToken }),
         });
-
         if (response.ok) {
           const data = await response.json();
           await AsyncStorage.setItem('access', data.access);
-          if (data.refresh) {
-            await AsyncStorage.setItem('refresh', data.refresh);
-          }
-          console.log('🔄 Token rafraîchi automatiquement');
+          if (data.refresh) await AsyncStorage.setItem('refresh', data.refresh);
         } else {
-          console.warn('⚠️ Refresh token expiré ou invalide');
           await AsyncStorage.multiRemove(['access', 'refresh']);
           navigation.navigate('EspaceClient');
         }
@@ -140,11 +148,10 @@ const Application = () => {
         console.error('Erreur lors du refresh :', err);
       }
     };
-
-    const intervalId = setInterval(refreshAccessToken, 5 * 60 * 1000); // 5 minutes
-
+    const intervalId = setInterval(refreshAccessToken, 5 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, [navigation]);
+
 
   if (chargement) {
     return (
@@ -154,10 +161,17 @@ const Application = () => {
     );
   }
 
+  // --- FANITSIANA NY RAFITRA ---
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={[styles.conteneur, { backgroundColor: isDarkMode ? '#222' : '#F5EFE3' }]}>
-        {/* En-tête */}
+    // SafeAreaView no ampiasaina mba tsy hidiran'ny atiny ao ambanin'ny "notch"
+    <SafeAreaView style={[styles.conteneur, { backgroundColor: isDarkMode ? '#222' : '#F5EFE3' }]}>
+      {/* ScrollView no mamono ny atiny azo korisa-midina */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={["#A45C40"]} />
+        }
+      >
         <View style={styles.entete}>
           <Image source={require('../assets/gestion.png')} style={styles.logoApp} />
           <View style={styles.sectionUtilisateur}>
@@ -165,462 +179,84 @@ const Application = () => {
           </View>
         </View>
 
-        {/* Navigation */}
         <View style={styles.container}>
-          {CATEGORIES.map((category, index) => (
-            <View key={index} style={styles.card}>
-              <Text style={styles.cardTitle}>{category.title}</Text>
-              {category.items.map((item, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.button}
-                  onPress={() => {
-                    switch (item) {
-                      case 'Créer types de métaux':
-                        navigation.navigate('TypeMetaux');
-                        break;
-                      case 'Définir lieux de collecte':
-                        navigation.navigate('LieuCollecte');
-                        break;
-                      case 'Grille tarifaire':
-                        navigation.navigate('GrilleTarifaire');
-                        break;
-                      case 'Enregistrer collectes':
-                        navigation.navigate('CollecteEnregistre');
-                        break;
-                      case 'Suivi des tournées':
-                        navigation.navigate('Tournee');
-                        break;
-                      case 'Gérer les stocks':
-                        navigation.navigate('Stock');
-                        break;
-                      case 'Corriger collectes':
-                        navigation.navigate('CorrigerCollecte');
-                        break;
-                      case 'Fusionner des lots':
-                        navigation.navigate('FusionLots');
-                        break;
-                      case 'Historique des corrections ':
-                        navigation.navigate('HistoriqueCorrection');
-                        break;
-                      case 'Quantité récupérée':
-                        navigation.navigate('StatQuantite');
-                        break;
-                      case 'Depense':
-                        navigation.navigate('Depense');
-                        break;
-                      case 'Analyse des performances':
-                        navigation.navigate('Performance');
-                        break;
-                      default:
-                        console.warn('Action non définie pour :', item);
-                    }
-                  }}
-                >
-                  <Text style={styles.buttonText}>{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {CATEGORIES.map((category) => (
+            <CategoryCard
+              key={category.title}
+              category={category}
+              onNavigate={(target: NavigationTarget) => navigation.navigate(target)}
+            />
           ))}
         </View>
+      </ScrollView>
 
-        {/* Pied de page */}
-        <View style={styles.pied}>
-          <Text style={styles.textePied}>{entreprise.nom}</Text>
-          <Text style={styles.textePied}>{entreprise.adresse}</Text>
-          <Text style={styles.textePied}>
-            SIRET : {entreprise.siret} | TVA : {entreprise.tva}
-          </Text>
-          <Text style={styles.textePied}>
-            Téléphone : {entreprise.telephone} | Email : {entreprise.email}
-          </Text>
-        </View>
-      </View>
-    </ScrollView>
+      {/* Ity fizarana ity dia ivelan'ny ScrollView mba hijanona eo ambany foana */}
+      {entreprise && (
+          <View style={styles.pied}>
+              <Text style={styles.textePiedNom}>{entreprise.nom}</Text>
+              <Text style={styles.textePied}>{entreprise.adresse}</Text>
+              <Text style={styles.textePied}>SIRET : {entreprise.siret} | TVA : {entreprise.tva}</Text>
+              <Text style={styles.textePied}>Tél : {entreprise.telephone} | Email : {entreprise.email}</Text>
+          </View>
+      )}
+    </SafeAreaView>
   );
 };
 
-// const { width } = Dimensions.get('window');
-
+// --- FANITSIANA NY STYLES ---
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
+  conteneur: { 
+    flex: 1, 
   },
-  conteneur: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+  scrollContainer: { 
+    // Tsy mila flexGrow intsony fa ny padding no ampiasaina
+    paddingHorizontal: 16, 
+    paddingBottom: 20, 
   },
-  entete: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingTop: 50,
+  entete: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingTop: 20, // Nesorina ilay 50 be loatra
+    marginBottom: 20, 
   },
-  logoApp: {
-    width: width * 0.3,
-    height: 40,
-    resizeMode: 'contain',
+  logoApp: { 
+    width: width * 0.3, 
+    height: 40, 
+    resizeMode: 'contain', 
   },
-  sectionUtilisateur: {
-    alignItems: 'center',
-    marginTop: -20,
-    marginRight: 20,
+  sectionUtilisateur: { 
+    alignItems: 'center', 
   },
-  container: {
-    padding: 16,
+  container: { 
+    paddingHorizontal: 4, 
   },
-  card: {
-    width: '100%',
-    backgroundColor: '#f3f3f3',
-    padding: 16,
-    marginBottom: 20,
-    borderRadius: 10,
-    elevation: 2,
+  pied: { 
+    alignItems: 'center', 
+    paddingVertical: 15, // Nohakelezina kely
+    borderTopWidth: 1, 
+    borderColor: '#DDD', 
+    backgroundColor: '#f0e6d2', 
+    paddingBottom: 20, // Mba hisy elanelana amin'ny farany ambany
   },
-  cardTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 12,
-    color: '#6e4e2e',
+  textePiedNom: { 
+    fontSize: 14, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginBottom: 4, 
   },
-  button: {
-    marginBottom: 10,
-    backgroundColor: '#e8e8e8',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+  textePied: { 
+    fontSize: 12, 
+    color: '#666', 
+    textAlign: 'center', 
+    lineHeight: 18, 
   },
-  buttonText: {
-    fontSize: 14,
-  },
-  pied: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#f0e6d2',
-    marginTop: 40,
-  },
-  textePied: {
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-  },
-  zoneChargement: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  zoneChargement: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#F5EFE3' 
   },
 });
 
 export default Application;
-
-
-// import React, { useEffect, useState } from 'react';
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   Image,
-//   TouchableOpacity,
-//   ActivityIndicator,
-//   Dimensions,
-//   useColorScheme,
-//   ScrollView,
-// } from 'react-native';
-// import { useNavigation } from '@react-navigation/native';
-// import { StackNavigationProp } from '@react-navigation/stack';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-// import Pdp from './Pdp';
-
-
-// // Types de navigation
-// type ListeNavigationPrincipale = {
-//   EspaceClient: undefined;
-//   EcranConfiguration: undefined;
-//   EcranExploitation: undefined;
-//   EcranEdition: undefined;
-//   SupplierDashord: undefined;
-//   TypeMetaux: undefined;
-//   LieuCollecte: undefined;
-//   GrilleTarifaire: undefined;
-//   CollecteEnregistre: undefined;
-//   Tournee: undefined;
-//   Stock: undefined;
-//   CorrigerCollecte: undefined;
-//   FusionLotsScreen: undefined;
-//   HistoriqueCorrection: undefined;
-//   StatQuantite: undefined;
-//   Depense: undefined;
-//   Performance: undefined;
-//   FusionLots:undefined;
-// };
-
-// type TypeNavigation = StackNavigationProp<ListeNavigationPrincipale>;
-
-// const { width } = Dimensions.get('window');
-
-// const CATEGORIES = [
-//   {
-//     title: 'CONFIGURATION',
-//     items: ['Créer types de métaux', 'Définir lieux de collecte', 'Grille tarifaire'],
-//   },
-//   {
-//     title: 'EXPLOITATION',
-//     items: ['Enregistrer collectes', 'Suivi des tournées', 'Gérer les stocks'],
-//   },
-//   {
-//     title: 'EDITION',
-//     items: ['Corriger collectes', 'Fusionner des lots', 'Historique des corrections '],
-//   },
-//   {
-//     title: 'STATISTIQUES',
-//     items: ['Quantité récupérée', 'Depense', 'Analyse des performances'],
-//   },
-// ];
-
-// const Application = () => {
-//   const navigation = useNavigation<TypeNavigation>();
-//   const [chargement, setChargement] = useState(true);
-//   const [entreprise, setEntreprise] = useState({
-//     nom: '',
-//     email: '',
-//     adresse: '',
-//     siret: '',
-//     tva: '',
-//     telephone: '',
-//     logo: '',
-//   });
-
-//   const isDarkMode = useColorScheme() === 'dark';
-
-//   useEffect(() => {
-//     const verifierToken = async () => {
-//       const token = await AsyncStorage.getItem('access');
-//       if (!token) {
-//         navigation.navigate('EspaceClient');
-//         return;
-//       }
-
-//       fetch('http://10.0.2.2:8000/api/me/', {
-//         headers: {
-//           Authorization: `Bearer ${token}`,
-//         },
-//       })
-//         .then(async (res) => {
-//           if (!res.ok) {
-//             const errorDetails = await res.text();
-//             console.error('Erreur brut:', errorDetails);
-//             throw new Error('Erreur lors de la récupération des données.');
-//           }
-//           return res.json();
-//         })
-//         .then((data) => {
-//           console.log('Entreprise connectée :', data);
-//           setEntreprise(data.entreprise);
-//         })
-//         .catch((error) => {
-//           console.error("Erreur lors du chargement de l'entreprise :", error);
-//         })
-//         .finally(() => setChargement(false));
-//     };
-
-//     verifierToken();
-//   }, [navigation]);
-
-//   if (chargement) {
-//     return (
-//       <View style={styles.zoneChargement}>
-//         <ActivityIndicator size="large" color="#A45C40" />
-//       </View>
-//     );
-//   }
-
-//   return (
-//     <ScrollView contentContainerStyle={styles.scrollContainer}>
-//       <View style={[styles.conteneur, { backgroundColor: isDarkMode ? '#222' : '#F5EFE3' }]}>
-//         {/* En-tête */}
-//         <View style={styles.entete}>
-//           <Image source={require('../assets/gestion.png')} style={styles.logoApp} />
-//           <View style={styles.sectionUtilisateur}>
-//             <Pdp />
-//             {/* <Text style={styles.nomUtilisateur}>{entreprise.nom || 'Nom non disponible'}</Text> */}
-//           </View>
-//         </View>
-
-//         {/* Navigation par catégories */}
-//         <View style={styles.container}>
-//           {CATEGORIES.map((category, index) => (
-//             <View key={index} style={styles.card}>
-//               <Text style={styles.cardTitle}>{category.title}</Text>
-//               {category.items.map((item, idx) => (
-//                 <TouchableOpacity
-//                   key={idx}
-//                   style={styles.button}
-//                   onPress={() => {
-//                     switch (item) {
-//                       case 'Créer types de métaux':
-//                         navigation.navigate('TypeMetaux');
-//                         break;
-//                       case 'Définir lieux de collecte':
-//                         navigation.navigate('LieuCollecte');
-//                         break;
-//                       case 'Grille tarifaire':
-//                         navigation.navigate('GrilleTarifaire');
-//                         break;
-//                       case 'Enregistrer collectes':
-//                         navigation.navigate('CollecteEnregistre');
-//                         break;
-//                       case 'Suivi des tournées':
-//                         navigation.navigate('Tournee');
-//                         break;
-//                       case 'Gérer les stocks':
-//                         navigation.navigate('Stock');
-//                         break;
-//                       case 'Corriger collectes':
-//                         navigation.navigate('CorrigerCollecte');
-//                         break;
-//                       case 'Fusionner des lots':
-//                         navigation.navigate('FusionLots');
-//                         break;
-//                       case 'Historique des corrections ':
-//                         navigation.navigate('HistoriqueCorrection');
-//                         break;
-//                       case 'Quantité récupérée':
-//                         navigation.navigate('StatQuantite');
-//                         break;
-//                       case 'Depense':
-//                         navigation.navigate('Depense');
-//                         break;
-//                       case 'Analyse des performances':
-//                         navigation.navigate('Performance');
-//                         break;
-//                       default:
-//                         console.warn('Action non définie pour :', item);
-//                     }
-//                   }}
-//                 >
-//                   <Text style={styles.buttonText}>{item}</Text>
-//                 </TouchableOpacity>
-//               ))}
-//             </View>
-//           ))}
-//         </View>
-
-//         {/* Déconnexion (optionnel, à décommenter si besoin) */}
-//         {/* <TouchableOpacity
-//           onPress={async () => {
-//             await AsyncStorage.removeItem('access');
-//             navigation.navigate('EspaceClient');
-//           }}
-//           style={styles.boutonDeconnexion}
-//         >
-//           <Text style={styles.texteDeconnexion}>Se déconnecter</Text>
-//         </TouchableOpacity> */}
-
-//         {/* Pied de page */}
-//         <View style={styles.pied}>
-//           <Text style={styles.textePied}>{entreprise.nom}</Text>
-//           <Text style={styles.textePied}>{entreprise.adresse}</Text>
-//           <Text style={styles.textePied}>
-//             SIRET : {entreprise.siret} | TVA : {entreprise.tva}
-//           </Text>
-//           <Text style={styles.textePied}>
-//             Téléphone : {entreprise.telephone} | Email : {entreprise.email}
-//           </Text>
-//         </View>
-//       </View>
-//     </ScrollView>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   scrollContainer: {
-//     flexGrow: 1,
-//   },
-//   conteneur: {
-//     flex: 1,
-//     justifyContent: 'space-between',
-//     paddingHorizontal: 20,
-//     paddingBottom: 30,
-//   },
-//   entete: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     alignItems: 'flex-start',
-//     paddingTop: 50,
-//   },
-//   logoApp: {
-//     width: width * 0.3,
-//     height: 40,
-//     resizeMode: 'contain',
-//   },
-//   sectionUtilisateur: {
-//     alignItems: 'center',
-//     marginTop: -20,
-//     marginRight:20,
-//   },
-//   nomUtilisateur: {
-//     fontSize: 18,
-//     fontWeight: '600',
-//     color: '#A45C40',
-//     marginTop: 8,
-//     textAlign: 'center',
-//   },
-//   container: {
-//     padding: 16,
-//   },
-//   card: {
-//     width: '100%',
-//     backgroundColor: '#f3f3f3',
-//     padding: 16,
-//     marginBottom: 20,
-//     borderRadius: 10,
-//     elevation: 2,
-//   },
-//   cardTitle: {
-//     fontWeight: 'bold',
-//     fontSize: 16,
-//     marginBottom: 12,
-//     color: '#6e4e2e',
-//   },
-//   button: {
-//     marginBottom: 10,
-//     backgroundColor: '#e8e8e8',
-//     paddingVertical: 8,
-//     paddingHorizontal: 12,
-//     borderRadius: 6,
-//   },
-//   buttonText: {
-//     fontSize: 14,
-//   },
-//   boutonDeconnexion: {
-//     marginTop: 20,
-//   },
-//   texteDeconnexion: {
-//     color: 'red',
-//     fontWeight: 'bold',
-//   },
-//   pied: {
-//     alignItems: 'center',
-//     paddingVertical: 20,
-//     borderTopWidth: 1,
-//     borderColor: '#DDD',
-//     backgroundColor: '#f0e6d2',
-//     marginTop: 40,
-//   },
-//   textePied: {
-//     fontSize: 13,
-//     color: '#666',
-//     textAlign: 'center',
-//   },
-//   zoneChargement: {
-//     flex: 1,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//   },
-// });
-
-// export default Application;

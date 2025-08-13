@@ -10,19 +10,6 @@ import EspaceClient from './src/screens/EspaceClient';
 import Application from './src/screens/Application';
 import ForgotPassword from './src/screens/ForgotPassword';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
-import DashbordScreen from './src/screens/DashbordScreen';
-import BonSaisieScreen from './src/screens/BonSaisieScreen';
-import Agent from './src/screens/Agent';
-import Admin from './src/screens/Admin';
-import GererU from './src/screens/GererU';
-import Gererpara from './src/screens/Gererpara';
-import fournisseur from './src/screens/fournisseur';
-import Reception from './src/screens/Reception';
-import Edition from './src/screens/Edition';
-
-import PageAchat from './src/screens/PageAchat';
-import Pesée from './src/screens/Pesée';
-import Facture from './src/screens/Facture';
 // import HistoriqueScreen from './src/screens/HistoriqueScreen';
 // import ReceptionScreen from './src/screens/ReceptionScreen';
 // import ProfilScreen from './src/screens/ProfilScreen';
@@ -110,24 +97,12 @@ const App: React.FC = () => {
         <Stack.Screen name="Application" component={Application} />
         <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
         <Stack.Screen name="ResetPasswordScreen" component={ResetPasswordScreen} />
-        <Stack.Screen name="DashbordScreen" component={DashbordScreen} />
-        <Stack.Screen name="BonSaisieScreen" component={BonSaisieScreen} />
-        <Stack.Screen name="Agent" component={Agent}/>
-        <Stack.Screen name="Admin" component={Admin}/>
-        <Stack.Screen name="GererU" component={GererU}/>
-        <Stack.Screen name="Gererpara" component={Gererpara}/>
-        <Stack.Screen name="Reception" component={Reception}/>
         {/* <Stack.Screen name="HistoriqueScreen" component={HistoriqueScreen} />
         <Stack.Screen name="ReceptionScreen" component={ReceptionScreen} />
         <Stack.Screen name="ProfilScreen" component={ProfilScreen} />
         <Stack.Screen name="StatistiquesScreen" component={StatistiquesScreen} /> */}
         <Stack.Screen name="Profil" component={Profil} />
         <Stack.Screen name="Pdp" component={Pdp} />
-        <Stack.Screen name="fournisseur" component={fournisseur}/>
-        <Stack.Screen name="Edition" component={Edition}/>
-        <Stack.Screen name="PageAchat" component={PageAchat}/>
-        <Stack.Screen name="Pesée" component={Pesée}/>
-        <Stack.Screen name="Facture" component={Facture}/>
         <Stack.Screen name="Collecte" component={Collecte}/>
 
   
